@@ -1,0 +1,165 @@
+#!/bin/bash
+
+echo ***Started***
+
+#Add firefox repository Should be done before apt-update
+sudo add-apt-repository ppa:ubuntu-mozilla-security/ppa
+echo ***Firefox Repository Added***
+sudo apt-get install firefox
+echo ***Firefox Updated***
+
+#Create Sysctl
+sed -i "net.ipv4.tcp_syncookies = 1" /etc/sysctl.conf
+sysctl -p
+echo ***Created Sysctl***
+
+#Updates
+apt-get update && apt-get upgrade && apt-get dist-update -y & #keep this ampersand
+apt-get update && sudo apt-get install --only-upgrade bash
+echo ***Updated***
+
+#Permissions (chmod)
+chmod 640 /etc/shadow
+chmod 644 /etc/passwd
+chmod 640 /etc/ftpusers
+chmod 440 /etc/inetd.conf
+chmod 440 /etc/xinetd.conf
+chmod 440 /etc/inetd.d
+chmod 644 /etc/hosts.allow
+chmod 644 /etc/hosts.deny
+chmod 600 /etc/cron.allow
+chmod 600 /etc/cron.deny
+chmod 644 /etc/crontab
+echo ***Permissions updated***
+
+#Remove Netcat
+rm $(whereis nc) && rm $(whereis netcat)
+echo ***Netcat removed***
+
+#Malware
+sudo apt-get install tree
+malwarerun=1
+echo Malware Check:
+while [[ $malwarerun -eq 1 ]]; do
+ cd /home/
+  read -p "Username to check for files ('quit' to exit): " uservar
+  if [[ $uservar = "quit" ]]; then
+    malwarerun=0
+    break
+  else
+    tree -a $uservar
+    find . -type f -iname \*.jpg -delete
+    find . -type f -iname \*.png -delete
+    find . -type f -iname \*.mp3 -delete
+    find . -type f -iname \*.mp4 -delete
+  fi
+done
+echo ***Various Media files have been removed***
+
+read -p "Does SSH need to be removed? (y/n): " sshinput
+if [[ $sshinput = "y" ]]; then
+  apt-get purge openssh-client
+  apt-get purge openssh-server
+  #Change sed
+  sed -i "PermitEmptyPasswords = no" /etc/ssh/sshd-config
+  sed -i "PermitRootLogin = no" /etc/ssh/sshd-config
+  sed -i "Protocol = 2" /etc/ssh/sshd-config
+  sed -i "UsePAM = yes" /etc/ssh/sshd-config
+  sed -i "X11Forwarding = no" /etc/ssh/sshd-config
+  echo ***SSH Updated***
+else
+  echo ***SSH NO***
+fi
+
+#Firewall
+ufw enable
+ufw default deny incoming #deny ALL incoming connections
+ufw logging on medium
+echo ***Firewall Updated***
+portss=1
+echo Ports:
+while [[ $portss -eq 1 ]]; do
+  read -p "Allow or Deny (a/d): " alden
+  if [[ $alden = "a" ]]; then
+    read -p "Allow Port: " portallow
+    if [[ $portallow = "" ]]; then
+      echo BREAK
+      break
+    else
+      ufw allow $portallow
+      echo ***$portallow is now allowed***
+    fi
+  elif [[ $alden = "d" ]]; then
+    read -p "Deny Port: " portdeny
+    if [[ $portdeny = "" ]]; then
+      echo BREAK
+      break
+    else
+      ufw delete $portallow
+      echo ***$portallow is now removed***
+    fi
+  else
+    echo BREAK
+    break
+  fi
+done
+
+#Services
+blacklist='bind9 winbind ftp ftpd vsftpd irc ircd-* lpd MPD MySQL PostgreSQL nc nfs nfsd lockd mountd statd portmapper rlogin rshd rpc rshd rwhod samba sendmail telnet telnetd wu'
+echo ***Bind needs to be removed manually***
+for name in ${blacklist[*]}; do
+  apt-get purge $name
+  echo ***$name removed***
+done
+
+#PAM/Cronjobs
+echo ***PAM and Cronjobs need to be completed!***
+
+#Ports
+echo Ports:
+lsof -i -n -P
+ss -l
+por="true"
+while [[ ! $por = "" ]]; do
+  read -p "Port to Kill: " por
+  kill $por
+  echo $por eliminated.
+done
+
+#Processes
+ps -e
+processes="true"
+while [[ ! $processes = "" ]]; do
+  read -p "Processes to Kill: " processes
+  kill $processes
+  echo $processes eliminated.
+done
+
+#Apache
+read -p "Does Apache need to be removed? (y/n) " apacheboo
+if [[ $apacheboo = "y" ]]; then
+  apt-get purge apache && apt-get purge apache2
+  echo ***Apache removed***
+fi
+
+#Rootkits
+apt-get install rkhunter
+rkhunter -c
+echo ***Take note of any WARNING error messages***
+
+#telnet
+echo ***Do Telnet stuff***
+
+#DNS
+echo ***Do DNS stuff***
+
+#Sysctl
+sed -i "net.ipv4.tcp_syncookies = 1" /etc/sysctl.conf
+sysctl -p
+echo ***Sysctl Done***
+
+#Shutdown
+echo ***Do Shutdown stuff***
+
+#Wrap Up
+echo ***Script is completed***
